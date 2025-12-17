@@ -197,7 +197,8 @@ const calculateEstimatedValue = (data: ValuationData): number => {
   let adjustedPrice = basePrice;
 
   // Ajustes por antigüedad
-  const age = new Date().getFullYear() - data.constructionYear;
+  const constructionYear = typeof data.constructionYear === 'number' ? data.constructionYear : new Date().getFullYear();
+  const age = new Date().getFullYear() - constructionYear;
   if (age > 50) adjustedPrice *= 0.75;
   else if (age > 30) adjustedPrice *= 0.85;
   else if (age > 10) adjustedPrice *= 0.95;
@@ -225,9 +226,10 @@ export const parseAddressFromText = (text: string) => {
   const lines = text.split('\n').filter(l => l.trim());
   return {
     streetType: '',
-    street: '',
-    number: '',
-    city: '',
+    streetName: '',
+    streetNumber: '',
+    postalCode: '',
+    municipality: '',
     province: '',
     parsed: lines.join(', ')
   };

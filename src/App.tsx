@@ -417,7 +417,7 @@ const App: React.FC = () => {
     }
 
     const direccion = `${formData.streetType} ${formData.streetName}, ${formData.streetNumber}${formData.floorLevel ? `, Planta ${formData.floorLevel}` : ''}${formData.door ? `, Puerta ${formData.door}` : ''}`;
-    const formatEur = (n?: number) => n ? new Intl.NumberFormat('es-ES', {maximumFractionDigits: 0}).format(n) + ' €' : '-';
+    const formatEur = (n?: number | null) => n ? new Intl.NumberFormat('es-ES', {maximumFractionDigits: 0}).format(n) + ' €' : '-';
     
     // Convertir markdown a HTML con mejor parseo
     const convertMarkdown = (md: string): string => {
@@ -732,8 +732,8 @@ const App: React.FC = () => {
     setSendingEmail(true);
 
     try {
-        const valMin = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(report.valuationRange.min);
-        const valMax = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(report.valuationRange.max);
+        const valMin = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(report.valuationRange?.min ?? 0);
+        const valMax = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(report.valuationRange?.max ?? 0);
         
         // Construct a nice HTML body for the email
         // Note: In EmailJS templates, you typically use {{message}} or specific fields.
