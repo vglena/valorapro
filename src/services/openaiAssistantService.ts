@@ -304,26 +304,50 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     await waitForRunCompletion(threadId, runId);
 
     // 5. Obtener la respuesta
-    const reportContent = await getThreadMessages(threadId);
+    let reportContent = await getThreadMessages(threadId);
 
-    // 6. Calcular valor usando €/m² del TRAMO ALTO del mercado real
-    const precioM2TramoAlto = getPrecioM2TramoAlto(data.municipality, data.province);
-    
-    // REGLA CRÍTICA: Usar €/m² del tramo alto de mercado real
-    // Si el asistente da un valor, solo lo usamos si es >= al calculado con €/m² alto
+    // 6. Extraer valores del informe y aplicar incremento del tramo alto
     const values = extractValuesFromReport(reportContent, data);
-    const valorCalculadoTramoAlto = Math.round(precioM2TramoAlto * data.area);
+    const precioM2TramoAlto = getPrecioM2TramoAlto(data.municipality, data.province);
+    const valorMinimoTramoAlto = Math.round(precioM2TramoAlto * data.area);
     
-    // El valor de mercado es el MAYOR entre:
-    // - El valor calculado con €/m² del tramo alto
-    // - El valor del asistente (si existe)
-    const valorAsistente = values.marketValue || extractEstimatedValue(reportContent, data);
-    const marketValue = Math.max(valorCalculadoTramoAlto, Math.round(valorAsistente * 1.25));
+    // Calcular valores con incremento interno (+25% sobre lo que da el asistente, o usar €/m² alto)
+    const INCREMENTO_INTERNO = 1.25;
+    const baseMarket = values.marketValue || valorMinimoTramoAlto;
+    const marketValue = Math.max(Math.round(baseMarket * INCREMENTO_INTERNO), valorMinimoTramoAlto);
+    const mortgageValue = Math.round(marketValue * 0.85);
+    const listingPrice = Math.round(marketValue * 1.05);
+    const freeMarketValue = Math.round(marketValue * 1.05);
     
     const pricePerSquareMeter = data.area ? Math.round(marketValue / data.area) : 0;
-    const mortgageValue = Math.round(marketValue * 0.85); // 85% del valor de mercado (ECO/805)
-    const listingPrice = Math.round(marketValue * 1.05); // +5% para negociación
-    const freeMarketValue = Math.round(marketValue * 1.05);
+
+    // IMPORTANTE: Reemplazar los valores en el informe para que coincidan
+    const formatoEuro = (valor: number) => valor.toLocaleString('es-ES');
+    
+    if (values.marketValue) {
+      reportContent = reportContent.replace(
+        new RegExp(`${formatoEuro(values.marketValue)}\\s*€`, 'g'),
+        `${formatoEuro(marketValue)} €`
+      );
+    }
+    if (values.mortgageValue) {
+      reportContent = reportContent.replace(
+        new RegExp(`${formatoEuro(values.mortgageValue)}\\s*€`, 'g'),
+        `${formatoEuro(mortgageValue)} €`
+      );
+    }
+    if (values.listingPrice) {
+      reportContent = reportContent.replace(
+        new RegExp(`${formatoEuro(values.listingPrice)}\\s*€`, 'g'),
+        `${formatoEuro(listingPrice)} €`
+      );
+    }
+    if (values.freeMarketValue) {
+      reportContent = reportContent.replace(
+        new RegExp(`${formatoEuro(values.freeMarketValue)}\\s*€`, 'g'),
+        `${formatoEuro(freeMarketValue)} €`
+      );
+    }
 
     // Extraer siguientes pasos del informe
     const nextSteps = extractNextSteps(reportContent);
