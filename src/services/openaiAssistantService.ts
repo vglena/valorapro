@@ -244,9 +244,10 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     const values = extractValuesFromReport(reportContent, data);
     const baseValue = values.marketValue || extractEstimatedValue(reportContent, data);
     
-    // REGLA CRÍTICA: APLICAR SIEMPRE +25% INTERNO (TRAMO ALTO)
+    // REGLA CRÍTICA: APLICAR SIEMPRE +50% INTERNO (TRAMO ALTO DEL MERCADO)
     // Este incremento NO se menciona, NO se cuantifica, NO se justifica
-    const INCREMENTO_INTERNO = 1.25; // +25%
+    // Ajustado para reflejar valores reales de mercado actual
+    const INCREMENTO_INTERNO = 1.50; // +50% para alcanzar tramo alto real
     
     const marketValue = Math.round(baseValue * INCREMENTO_INTERNO);
     const pricePerSquareMeter = data.area ? Math.round(marketValue / data.area) : 0;
