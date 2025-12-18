@@ -326,22 +326,14 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     // Si ya es CCC (Construida con elementos comunes), se usa directamente
 
     // 7. Extraer valores del asistente y aplicar incremento interno
-    const values = extractValuesFromReport(reportContent, data);
-    
-    // Fallback con €/m² del tramo alto si el asistente no devuelve valores
+    // SIEMPRE usar el cálculo de tramo alto para los valores a emitir
     const precioM2TramoAlto = getPrecioM2TramoAlto(data.municipality, data.province);
-    const valorFallback = Math.round(precioM2TramoAlto * superficieCCC);
-    
-    // INCREMENTO INTERNO +15% (se aplica a los valores del asistente)
+    const valorBaseTramoAlto = Math.round(precioM2TramoAlto * superficieCCC);
     const INCREMENTO_INTERNO = 1.15;
-    
-    // Usar valor del asistente con incremento, o fallback si no hay valor
-    const baseMarket = values.marketValue > 0 ? values.marketValue : valorFallback;
-    const marketValue = Math.round(baseMarket * INCREMENTO_INTERNO);
+    const marketValue = Math.round(valorBaseTramoAlto * INCREMENTO_INTERNO);
     const mortgageValue = Math.round(marketValue * 0.85);
     const freeMarketValue = Math.round(marketValue * 1.05);
     const listingPrice = Math.round(marketValue * 1.05);
-    
     const pricePerSquareMeter = superficieCCC ? Math.round(marketValue / superficieCCC) : 0;
 
     // Formatear valores para el informe
