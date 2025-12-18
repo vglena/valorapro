@@ -60,53 +60,41 @@ const markdownComponents: Components = {
 export const ValuationResult: React.FC<ValuationResultProps> = ({ report, userType }) => {
   
   // --- ROBUST CALCULATION LOGIC ---
+  // REGLA: Usar siempre valores del TRAMO ALTO del mercado
   
-  // 1. Market Value Average
+  // 1. Valor de Mercado - usar el valor MAX (tramo alto)
   const valMin = report.valuationRange?.min;
   const valMax = report.valuationRange?.max;
   
-  let marketValueAvg = 0;
-  if (typeof valMin === 'number' && typeof valMax === 'number') {
-      marketValueAvg = (valMin + valMax) / 2;
+  let marketValue = 0;
+  if (typeof valMax === 'number') {
+      marketValue = valMax; // Usar el valor ALTO
   } else if (typeof valMin === 'number') {
-      marketValueAvg = valMin;
-  } else if (typeof valMax === 'number') {
-      marketValueAvg = valMax;
+      marketValue = valMin;
   }
 
-  // 2. Mortgage Value (Bank Estimate)
+  // 2. Valor Hipotecario (85% del valor de mercado según ECO/805)
   const bankMin = report.bankEstimateRange?.min;
   const bankMax = report.bankEstimateRange?.max;
   
-  let mortgageValueAvg = 0;
-  if (typeof bankMin === 'number' || typeof bankMax === 'number') {
-      const bMin = typeof bankMin === 'number' ? bankMin : (bankMax || 0);
-      const bMax = typeof bankMax === 'number' ? bankMax : (bankMin || 0);
-      mortgageValueAvg = (bMin + bMax) / 2;
+  let mortgageValue = 0;
+  if (typeof bankMax === 'number') {
+      mortgageValue = bankMax;
+  } else if (typeof bankMin === 'number') {
+      mortgageValue = bankMin;
   } else {
-      // Fallback: 85% of Market Value (Prudencia ECO/805)
-      mortgageValueAvg = marketValueAvg > 0 ? marketValueAvg * 0.85 : 0;
+      // Fallback: 85% del Valor de Mercado (ECO/805)
+      mortgageValue = marketValue > 0 ? marketValue * 0.85 : 0;
   }
 
-  // 3. Sales Value (Listing Price)
+  // 3. Valor de Venta Recomendado (105% del valor de mercado)
   let salesValue = 0;
   if (typeof report.listingPriceRecommendation === 'number') {
       salesValue = report.listingPriceRecommendation;
   } else {
-      // Fallback: 105% of Market Value (Margen negociación)
-      salesValue = marketValueAvg > 0 ? marketValueAvg * 1.05 : 0;
+      // Fallback: 105% del Valor de Mercado
+      salesValue = marketValue > 0 ? marketValue * 1.05 : 0;
   }
-
-  // Format Helper for Range
-  const displayRange = (min?: number, max?: number) => {
-      const hasMin = typeof min === 'number';
-      const hasMax = typeof max === 'number';
-      
-      if (hasMin && hasMax) return `${formatNumber(min)} - ${formatNumber(max)}`;
-      if (hasMin) return `Desde ${formatNumber(min)}`;
-      if (hasMax) return `Hasta ${formatNumber(max)}`;
-      return 'No disponible';
-  };
 
   // Split the detailed analysis markdown by the placeholder to insert the table react component
   const detailedParts = report.detailedAnalysis 
@@ -143,13 +131,12 @@ export const ValuationResult: React.FC<ValuationResultProps> = ({ report, userTy
                         <Home className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="font-bold text-slate-800">Valor de mercado</p>
-                        <p className="text-sm text-slate-500">Referencia real (Valor unitario medio ponderado)</p>
+                        <p className="font-bold text-slate-800">Valor de Mercado (ECO/ECM)</p>
+                        <p className="text-sm text-slate-500">Método de comparación - Tramo alto del mercado</p>
                     </div>
                 </div>
                 <div className="text-right">
-                    <span className="text-2xl font-bold text-slate-900 block">{formatCurrency(marketValueAvg)}</span>
-                    <span className="text-xs text-slate-400">Rango: {displayRange(report.valuationRange?.min, report.valuationRange?.max)} €</span>
+                    <span className="text-2xl font-bold text-slate-900 block">{formatCurrency(marketValue)}</span>
                 </div>
             </div>
 
@@ -160,12 +147,12 @@ export const ValuationResult: React.FC<ValuationResultProps> = ({ report, userTy
                         <Landmark className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="font-bold text-slate-800">Valor garantía hipotecaria</p>
-                        <p className="text-sm text-slate-500">Prudencia bancaria (Aprox. ECO/805)</p>
+                        <p className="font-bold text-slate-800">Valor de Garantía Hipotecaria</p>
+                        <p className="text-sm text-slate-500">Conforme ECO/805/2003</p>
                     </div>
                 </div>
                 <div className="text-right">
-                    <span className="text-xl font-semibold text-slate-700 block">{formatCurrency(mortgageValueAvg)}</span>
+                    <span className="text-xl font-semibold text-slate-700 block">{formatCurrency(mortgageValue)}</span>
                 </div>
             </div>
 

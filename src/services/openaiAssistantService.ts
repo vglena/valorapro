@@ -241,16 +241,15 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     const reportContent = await getThreadMessages(threadId);
 
     // 6. Extraer valores del informe
-    const values = extractValuesFromReport(reportContent);
-    const estimatedValue = extractEstimatedValue(reportContent, data);
+    const values = extractValuesFromReport(reportContent, data);
+    const estimatedValue = values.marketValue || extractEstimatedValue(reportContent, data);
     const pricePerSquareMeter = data.area ? Math.round(estimatedValue / data.area) : 0;
 
-    // Usar valores extraídos o calcular fallback
-    const marketMin = values.marketMin || Math.round(estimatedValue * 0.95);
-    const marketMax = values.marketMax || Math.round(estimatedValue * 1.05);
-    const mortgageMin = values.mortgageMin || Math.round(estimatedValue * 0.80);
-    const mortgageMax = values.mortgageMax || Math.round(estimatedValue * 0.90);
-    const listingPrice = values.listingPrice || Math.round(estimatedValue * 1.05);
+    // REGLA: Usar siempre valores del TRAMO ALTO (aplicar +25% interno si no viene del assistant)
+    const marketValue = values.marketValue || Math.round(estimatedValue * 1.25); // +25% interno
+    const mortgageValue = values.mortgageValue || Math.round(marketValue * 0.85);
+    const listingPrice = values.listingPrice || Math.round(marketValue * 1.05);
+    const freeMarketValue = values.freeMarketValue || Math.round(marketValue * 1.05);
 
     // Extraer siguientes pasos del informe
     const nextSteps = extractNextSteps(reportContent);
@@ -258,7 +257,7 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     return {
       propertyDescription: `${data.propertyType} de ${data.area}m² en ${data.municipality}, ${data.province}`,
       valuationApproach: 'Metodología ECO/805/2003 y ECM/599/2025',
-      estimatedValue,
+      estimatedValue: marketValue,
       pricePerSquareMeter,
       confidence: 'alto',
       summary: reportContent,
@@ -268,12 +267,12 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
       secondaryPurpose: data.secondaryPurposes?.join(', ') || '',
       timestamp: new Date().toISOString(),
       valuationRange: {
-        min: marketMin,
-        max: marketMax
+        min: marketValue,
+        max: marketValue
       },
       bankEstimateRange: {
-        min: mortgageMin,
-        max: mortgageMax
+        min: mortgageValue,
+        max: mortgageValue
       },
       listingPriceRecommendation: listingPrice,
       nextSteps: nextSteps
@@ -321,32 +320,89 @@ const extractEstimatedValue = (content: string, data: ValuationData): number => 
 };
 
 /**
- * Extrae los tres valores del informe: mercado, hipotecario y venta
+ * Extrae los cuatro valores únicos del informe
+ * REGLA: El asistente debe emitir valores únicos, no rangos
  */
-const extractValuesFromReport = (content: string): { marketMin: number; marketMax: number; mortgageMin: number; mortgageMax: number; listingPrice: number } => {
-  const result = { marketMin: 0, marketMax: 0, mortgageMin: 0, mortgageMax: 0, listingPrice: 0 };
+const extractValuesFromReport = (content: string, data: ValuationData): { 
+  marketValue: number; 
+  mortgageValue: number; 
+  listingPrice: number; 
+  freeMarketValue: number;
+} => {
+  const result = { marketValue: 0, mortgageValue: 0, listingPrice: 0, freeMarketValue: 0 };
   
-  // Valor de mercado (buscar rango)
-  const marketPattern = /valor\s+de\s+mercado[:\s]*(?:entre\s+)?([\d.,]+)\s*(?:€|EUR|euros)?\s*[-–y]\s*([\d.,]+)\s*(?:€|EUR|euros)?/i;
-  const marketMatch = content.match(marketPattern);
-  if (marketMatch) {
-    result.marketMin = parseValue(marketMatch[1]);
-    result.marketMax = parseValue(marketMatch[2]);
+  // Patrones para valores únicos en NEGRITA (como indica el prompt)
+  // **1. VALOR DE MERCADO (ECO/ECM):** XXX.XXX €
+  
+  // Valor de mercado (único)
+  const marketPatterns = [
+    /\*\*1\.\s*VALOR\s+DE\s+MERCADO[^:]*:\*\*\s*([\d.,]+)\s*€?/i,
+    /valor\s+de\s+mercado[^:]*:\s*\*?\*?([\d.,]+)\s*€?/i,
+    /VALOR\s+DE\s+MERCADO[^:]*:\s*([\d.,]+)\s*€/i
+  ];
+  
+  for (const pattern of marketPatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      const value = parseValue(match[1]);
+      if (value > 10000) {
+        result.marketValue = value;
+        break;
+      }
+    }
   }
   
-  // Valor hipotecario
-  const mortgagePattern = /valor\s+(?:hipotecario|garantía\s+hipotecaria)[:\s]*(?:entre\s+)?([\d.,]+)\s*(?:€|EUR|euros)?\s*[-–y]\s*([\d.,]+)\s*(?:€|EUR|euros)?/i;
-  const mortgageMatch = content.match(mortgagePattern);
-  if (mortgageMatch) {
-    result.mortgageMin = parseValue(mortgageMatch[1]);
-    result.mortgageMax = parseValue(mortgageMatch[2]);
+  // Valor hipotecario (único)
+  const mortgagePatterns = [
+    /\*\*2\.\s*VALOR\s+DE\s+GARANT[ÍI]A\s+HIPOTECARIA[^:]*:\*\*\s*([\d.,]+)\s*€?/i,
+    /valor\s+(?:de\s+)?garant[ií]a\s+hipotecaria[^:]*:\s*\*?\*?([\d.,]+)\s*€?/i,
+    /valor\s+hipotecario[^:]*:\s*([\d.,]+)\s*€/i
+  ];
+  
+  for (const pattern of mortgagePatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      const value = parseValue(match[1]);
+      if (value > 10000) {
+        result.mortgageValue = value;
+        break;
+      }
+    }
   }
   
-  // Valor de venta recomendado
-  const listingPattern = /valor\s+de\s+venta\s+recomendado[:\s]*([\d.,]+)\s*(?:€|EUR|euros)?/i;
-  const listingMatch = content.match(listingPattern);
-  if (listingMatch) {
-    result.listingPrice = parseValue(listingMatch[1]);
+  // Valor de mercado libre (único)
+  const freeMarketPatterns = [
+    /\*\*3\.\s*VALOR\s+DE\s+MERCADO\s+LIBRE[^:]*:\*\*\s*([\d.,]+)\s*€?/i,
+    /valor\s+de\s+mercado\s+libre[^:]*:\s*\*?\*?([\d.,]+)\s*€?/i
+  ];
+  
+  for (const pattern of freeMarketPatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      const value = parseValue(match[1]);
+      if (value > 10000) {
+        result.freeMarketValue = value;
+        break;
+      }
+    }
+  }
+  
+  // Valor de venta recomendado (único)
+  const listingPatterns = [
+    /\*\*4\.\s*VALOR\s+DE\s+VENTA\s+RECOMENDADO[^:]*:\*\*\s*([\d.,]+)\s*€?/i,
+    /valor\s+de\s+venta\s+recomendado[^:]*:\s*\*?\*?([\d.,]+)\s*€?/i,
+    /precio\s+de\s+venta[^:]*:\s*([\d.,]+)\s*€/i
+  ];
+  
+  for (const pattern of listingPatterns) {
+    const match = content.match(pattern);
+    if (match) {
+      const value = parseValue(match[1]);
+      if (value > 10000) {
+        result.listingPrice = value;
+        break;
+      }
+    }
   }
   
   return result;
