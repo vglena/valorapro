@@ -59,45 +59,54 @@ const markdownComponents: Components = {
 
 export const ValuationResult: React.FC<ValuationResultProps> = ({ report, userType }) => {
   
-  // --- ROBUST CALCULATION LOGIC ---
-  // REGLA: Usar siempre valores del TRAMO ALTO del mercado
-  
-  // 1. Valor de Mercado - usar el valor MAX (tramo alto)
-  const valMin = report.valuationRange?.min;
-  const valMax = report.valuationRange?.max;
-  
-  let marketValue = 0;
-  if (typeof valMax === 'number') {
-      marketValue = valMax; // Usar el valor ALTO
-  } else if (typeof valMin === 'number') {
-      marketValue = valMin;
-  }
 
-  // 2. Valor Hipotecario (85% del valor de mercado según ECO/805)
-  const bankMin = report.bankEstimateRange?.min;
-  const bankMax = report.bankEstimateRange?.max;
-  
-  let mortgageValue = 0;
-  if (typeof bankMax === 'number') {
+    // --- ROBUST CALCULATION LOGIC ---
+    // REGLA: Usar siempre valores del TRAMO ALTO del mercado
+
+    // 1. Valor de Mercado - usar el valor MAX (tramo alto)
+    const valMin = report.valuationRange?.min;
+    const valMax = report.valuationRange?.max;
+
+    let marketValue = 0;
+    if (typeof valMax === 'number') {
+      marketValue = valMax; // Usar el valor ALTO
+    } else if (typeof valMin === 'number') {
+      marketValue = valMin;
+    }
+
+    // 2. Valor Hipotecario (85% del valor de mercado según ECO/805)
+    const bankMin = report.bankEstimateRange?.min;
+    const bankMax = report.bankEstimateRange?.max;
+
+    let mortgageValue = 0;
+    if (typeof bankMax === 'number') {
       mortgageValue = bankMax;
-  } else if (typeof bankMin === 'number') {
+    } else if (typeof bankMin === 'number') {
       mortgageValue = bankMin;
-  } else {
+    } else {
       // Fallback: 85% del Valor de Mercado (ECO/805)
       mortgageValue = marketValue > 0 ? marketValue * 0.85 : 0;
-  }
+    }
 
-  // 3. Valor de Venta Recomendado (105% del valor de mercado)
-  let salesValue = 0;
-  if (typeof report.listingPriceRecommendation === 'number') {
+    // 3. Valor de Venta Recomendado (105% del valor de mercado)
+    let salesValue = 0;
+    if (typeof report.listingPriceRecommendation === 'number') {
       salesValue = report.listingPriceRecommendation;
-  } else {
+    } else {
       // Fallback: 105% del Valor de Mercado
       salesValue = marketValue > 0 ? marketValue * 1.05 : 0;
-  }
+    }
 
-  // Split the detailed analysis markdown by the placeholder to insert the table react component
-  const detailedParts = report.detailedAnalysis 
+    // --- REEMPLAZO DE VALORES A EMITIR EN EL MARKDOWN DEL INFORME ---
+    function replaceValoresEmitidos(markdown: string) {
+    // Regex para capturar la sección VALORES EMITIDOS
+    const patronValoresEmitidos = /\*?\*?VALORES\s+A\s+EMITIR\*?\*?:?[\s\S]*?(?=\n\nADVERTENCIAS|\n\n\*\*ADVERTENCIAS|ADVERTENCIAS:|$)/i;
+    const nuevosValores = `**VALORES A EMITIR:**\n\n1. VALOR DE MERCADO (ECO/ECM): ${formatCurrency(marketValue)}\n2. VALOR DE GARANTÍA HIPOTECARIA: ${formatCurrency(mortgageValue)}\n3. VALOR DE MERCADO LIBRE (no OM): ${formatCurrency(Math.round(marketValue * 1.05))}\n4. VALOR DE VENTA RECOMENDADO: ${formatCurrency(salesValue)}\n`;
+    return markdown.replace(patronValoresEmitidos, nuevosValores);
+    }
+
+    // Split the detailed analysis markdown by the placeholder to insert the table react component
+    const detailedParts = report.detailedAnalysis 
     ? report.detailedAnalysis.split('[[TABLE_PLACEHOLDER]]') 
     : [];
 
@@ -184,7 +193,7 @@ export const ValuationResult: React.FC<ValuationResultProps> = ({ report, userTy
            
            <div className="bg-white p-6 md:p-8 rounded-xl border border-slate-200 shadow-sm prose prose-slate max-w-none">
                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                 {report.reportContent.replace(/##\s*10\.\s*SIGUIENTES PASOS RECOMENDADOS[\s\S]*?(?=##\s*11\.|$)/gi, '')}
+                 {replaceValoresEmitidos(report.reportContent.replace(/##\s*10\.\s*SIGUIENTES PASOS RECOMENDADOS[\s\S]*?(?=##\s*11\.|$)/gi, ''))}
                </ReactMarkdown>
            </div>
         </section>
