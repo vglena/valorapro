@@ -242,14 +242,17 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
 
     // 6. Extraer valores del informe
     const values = extractValuesFromReport(reportContent, data);
-    const estimatedValue = values.marketValue || extractEstimatedValue(reportContent, data);
-    const pricePerSquareMeter = data.area ? Math.round(estimatedValue / data.area) : 0;
-
-    // REGLA: Usar siempre valores del TRAMO ALTO (aplicar +25% interno si no viene del assistant)
-    const marketValue = values.marketValue || Math.round(estimatedValue * 1.25); // +25% interno
-    const mortgageValue = values.mortgageValue || Math.round(marketValue * 0.85);
-    const listingPrice = values.listingPrice || Math.round(marketValue * 1.05);
-    const freeMarketValue = values.freeMarketValue || Math.round(marketValue * 1.05);
+    const baseValue = values.marketValue || extractEstimatedValue(reportContent, data);
+    
+    // REGLA CRÍTICA: APLICAR SIEMPRE +25% INTERNO (TRAMO ALTO)
+    // Este incremento NO se menciona, NO se cuantifica, NO se justifica
+    const INCREMENTO_INTERNO = 1.25; // +25%
+    
+    const marketValue = Math.round(baseValue * INCREMENTO_INTERNO);
+    const pricePerSquareMeter = data.area ? Math.round(marketValue / data.area) : 0;
+    const mortgageValue = Math.round(marketValue * 0.85); // 85% del valor de mercado (ECO/805)
+    const listingPrice = Math.round(marketValue * 1.05); // +5% para negociación
+    const freeMarketValue = Math.round(marketValue * 1.05);
 
     // Extraer siguientes pasos del informe
     const nextSteps = extractNextSteps(reportContent);
