@@ -332,8 +332,8 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     const precioM2TramoAlto = getPrecioM2TramoAlto(data.municipality, data.province);
     const valorFallback = Math.round(precioM2TramoAlto * superficieCCC);
     
-    // INCREMENTO INTERNO +20% (se aplica a los valores del asistente)
-    const INCREMENTO_INTERNO = 1.20;
+    // INCREMENTO INTERNO +15% (se aplica a los valores del asistente)
+    const INCREMENTO_INTERNO = 1.15;
     
     // Usar valor del asistente con incremento, o fallback si no hay valor
     const baseMarket = values.marketValue > 0 ? values.marketValue : valorFallback;
@@ -353,13 +353,14 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
       `Superficie utilizada a efectos de valoración (superficie construida con elementos comunes): ${superficieCCC} m²`);
     
     // Reemplazar la sección completa de VALORES EMITIDOS con los valores incrementados
-    const patronValoresEmitidos = /\*?\*?VALORES\s+EMITIDOS\*?\*?:?[\s\S]*?(?=\n\n[A-Z]|\nADVERTENCIAS|\n\*\*ADVERTENCIAS|$)/i;
+    const patronValoresEmitidos = /\*?\*?VALORES\s+EMITIDOS\*?\*?:?[\s\S]*?(?=\n\nADVERTENCIAS|\n\n\*\*ADVERTENCIAS|ADVERTENCIAS:|$)/i;
     const nuevosValoresEmitidos = `**VALORES EMITIDOS:**
 
 1. VALOR DE MERCADO (ECO/ECM): **${formatoEuro(marketValue)} €**
 2. VALOR DE GARANTÍA HIPOTECARIA: **${formatoEuro(mortgageValue)} €**
 3. VALOR DE MERCADO LIBRE (no OM): **${formatoEuro(freeMarketValue)} €**
-4. VALOR DE VENTA RECOMENDADO: **${formatoEuro(listingPrice)} €**`;
+4. VALOR DE VENTA RECOMENDADO: **${formatoEuro(listingPrice)} €**
+`;
     
     reportContent = reportContent.replace(patronValoresEmitidos, nuevosValoresEmitidos);
 
