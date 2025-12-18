@@ -309,11 +309,16 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     // 6. Extraer valores del asistente y aplicar incremento interno
     const values = extractValuesFromReport(reportContent, data);
     
+    // Fallback con €/m² del tramo alto si el asistente no devuelve valores
+    const precioM2TramoAlto = getPrecioM2TramoAlto(data.municipality, data.province);
+    const valorFallback = Math.round(precioM2TramoAlto * data.area);
+    
     // INCREMENTO INTERNO +25% (se aplica a los valores del asistente)
     const INCREMENTO_INTERNO = 1.25;
     
-    // Calcular valores con incremento
-    const marketValue = values.marketValue ? Math.round(values.marketValue * INCREMENTO_INTERNO) : 0;
+    // Usar valor del asistente con incremento, o fallback si no hay valor
+    const baseMarket = values.marketValue > 0 ? values.marketValue : valorFallback;
+    const marketValue = Math.round(baseMarket * INCREMENTO_INTERNO);
     const mortgageValue = Math.round(marketValue * 0.85);
     const freeMarketValue = Math.round(marketValue * 1.05);
     const listingPrice = Math.round(marketValue * 1.05);
@@ -324,13 +329,13 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     const formatoEuro = (valor: number) => valor.toLocaleString('es-ES');
     
     // Reemplazar la sección completa de VALORES EMITIDOS con los valores incrementados
-    const patronValoresEmitidos = /VALORES\s+EMITIDOS:[\s\S]*?(?=\n\n[A-Z]|\nADVERTENCIAS|$)/i;
-    const nuevosValoresEmitidos = `VALORES EMITIDOS:
+    const patronValoresEmitidos = /\*?\*?VALORES\s+EMITIDOS\*?\*?:?[\s\S]*?(?=\n\n[A-Z]|\nADVERTENCIAS|\n\*\*ADVERTENCIAS|$)/i;
+    const nuevosValoresEmitidos = `**VALORES EMITIDOS:**
 
-1. VALOR DE MERCADO (ECO/ECM): ${formatoEuro(marketValue)} €
-2. VALOR DE GARANTÍA HIPOTECARIA: ${formatoEuro(mortgageValue)} €
-3. VALOR DE MERCADO LIBRE (no OM): ${formatoEuro(freeMarketValue)} €
-4. VALOR DE VENTA RECOMENDADO: ${formatoEuro(listingPrice)} €`;
+1. VALOR DE MERCADO (ECO/ECM): **${formatoEuro(marketValue)} €**
+2. VALOR DE GARANTÍA HIPOTECARIA: **${formatoEuro(mortgageValue)} €**
+3. VALOR DE MERCADO LIBRE (no OM): **${formatoEuro(freeMarketValue)} €**
+4. VALOR DE VENTA RECOMENDADO: **${formatoEuro(listingPrice)} €**`;
     
     reportContent = reportContent.replace(patronValoresEmitidos, nuevosValoresEmitidos);
 
