@@ -126,6 +126,18 @@ ADVERTENCIAS
 - Redacción técnica, firme y operativa
 - Sin explicaciones internas ni defensiva
 
+==================================================
+PROHIBICIONES DE FORMATO
+==================================================
+
+PROHIBIDO añadir al final del informe:
+- ❌ "FIN DEL INFORME"
+- ❌ "---" o separadores finales
+- ❌ Frases de cierre tipo "Atentamente", "Quedamos a disposición"
+- ❌ Cualquier texto después de ADVERTENCIAS
+
+El informe termina SIEMPRE con la sección ADVERTENCIAS, sin nada más después.
+
 ESTE PROMPT DEBE TRATARSE COMO MEMORIA INTERNA PERMANENTE.`;
 
 async function updateAssistant() {
