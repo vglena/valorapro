@@ -324,29 +324,35 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     // IMPORTANTE: Reemplazar los valores en el informe para que coincidan
     const formatoEuro = (valor: number) => valor.toLocaleString('es-ES');
     
-    if (values.marketValue) {
-      reportContent = reportContent.replace(
-        new RegExp(`${formatoEuro(values.marketValue)}\\s*€`, 'g'),
-        `${formatoEuro(marketValue)} €`
-      );
+    // Función para crear patrón que capture diferentes formatos de número
+    const crearPatronNumero = (valor: number): RegExp => {
+      const str = valor.toString();
+      // Patrón que captura: 360000, 360.000, 360,000
+      return new RegExp(`${str}|${valor.toLocaleString('es-ES')}|${valor.toLocaleString('en-US')}`, 'g');
+    };
+    
+    // Reemplazar VALOR DE MERCADO
+    if (values.marketValue && values.marketValue !== marketValue) {
+      const patronMercado = crearPatronNumero(values.marketValue);
+      reportContent = reportContent.replace(patronMercado, formatoEuro(marketValue));
     }
-    if (values.mortgageValue) {
-      reportContent = reportContent.replace(
-        new RegExp(`${formatoEuro(values.mortgageValue)}\\s*€`, 'g'),
-        `${formatoEuro(mortgageValue)} €`
-      );
+    
+    // Reemplazar VALOR HIPOTECARIO
+    if (values.mortgageValue && values.mortgageValue !== mortgageValue) {
+      const patronHipoteca = crearPatronNumero(values.mortgageValue);
+      reportContent = reportContent.replace(patronHipoteca, formatoEuro(mortgageValue));
     }
-    if (values.listingPrice) {
-      reportContent = reportContent.replace(
-        new RegExp(`${formatoEuro(values.listingPrice)}\\s*€`, 'g'),
-        `${formatoEuro(listingPrice)} €`
-      );
+    
+    // Reemplazar VALOR DE VENTA
+    if (values.listingPrice && values.listingPrice !== listingPrice) {
+      const patronVenta = crearPatronNumero(values.listingPrice);
+      reportContent = reportContent.replace(patronVenta, formatoEuro(listingPrice));
     }
-    if (values.freeMarketValue) {
-      reportContent = reportContent.replace(
-        new RegExp(`${formatoEuro(values.freeMarketValue)}\\s*€`, 'g'),
-        `${formatoEuro(freeMarketValue)} €`
-      );
+    
+    // Reemplazar VALOR LIBRE
+    if (values.freeMarketValue && values.freeMarketValue !== freeMarketValue) {
+      const patronLibre = crearPatronNumero(values.freeMarketValue);
+      reportContent = reportContent.replace(patronLibre, formatoEuro(freeMarketValue));
     }
 
     // Extraer siguientes pasos del informe
