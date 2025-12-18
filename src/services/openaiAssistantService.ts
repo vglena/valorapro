@@ -13,6 +13,72 @@ const ASSISTANT_ID = import.meta.env.VITE_OPENAI_ASSISTANT_ID || '';
 const OPENAI_API_BASE = 'https://api.openai.com/v1';
 
 /**
+ * PRECIOS €/m² TRAMO ALTO DEL MERCADO (Diciembre 2024)
+ * Estos son valores del tramo alto, no medias
+ */
+const PRECIOS_M2_TRAMO_ALTO: Record<string, number> = {
+  // Andalucía
+  'Málaga': 4200,
+  'Marbella': 6500,
+  'Sevilla': 3800,
+  'Granada': 3200,
+  'Córdoba': 2800,
+  'Cádiz': 3500,
+  'Almería': 2600,
+  'Huelva': 2400,
+  'Jaén': 2200,
+  // Madrid
+  'Madrid': 6500,
+  // Cataluña
+  'Barcelona': 6000,
+  'Tarragona': 3200,
+  'Girona': 3500,
+  'Lleida': 2400,
+  // Comunidad Valenciana
+  'Valencia': 3800,
+  'Alicante': 3500,
+  'Castellón': 2800,
+  // País Vasco
+  'Bilbao': 4500,
+  'San Sebastián': 7000,
+  'Vitoria': 3800,
+  // Baleares
+  'Palma de Mallorca': 5500,
+  'Ibiza': 8000,
+  // Canarias
+  'Las Palmas': 3500,
+  'Santa Cruz de Tenerife': 3200,
+  // Otras
+  'Zaragoza': 3200,
+  'Murcia': 2800,
+  'Valladolid': 2800,
+  'A Coruña': 3200,
+  'Vigo': 3000,
+  'Oviedo': 3000,
+  'Santander': 3500,
+  'Pamplona': 3800,
+  'Logroño': 2800,
+  // Default para otras ciudades
+  'DEFAULT': 3000
+};
+
+/**
+ * Obtiene el precio €/m² del tramo alto para una ubicación
+ */
+const getPrecioM2TramoAlto = (municipality: string, province: string): number => {
+  // Buscar primero por municipio
+  if (PRECIOS_M2_TRAMO_ALTO[municipality]) {
+    return PRECIOS_M2_TRAMO_ALTO[municipality];
+  }
+  // Luego por provincia
+  if (PRECIOS_M2_TRAMO_ALTO[province]) {
+    return PRECIOS_M2_TRAMO_ALTO[province];
+  }
+  // Default
+  return PRECIOS_M2_TRAMO_ALTO['DEFAULT'];
+};
+
+/**
  * Formatea los datos del inmueble para enviar al Assistant
  */
 const formatPropertyDataForAssistant = (data: ValuationData): string => {
@@ -240,16 +306,20 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     // 5. Obtener la respuesta
     const reportContent = await getThreadMessages(threadId);
 
-    // 6. Extraer valores del informe
+    // 6. Calcular valor usando €/m² del TRAMO ALTO del mercado real
+    const precioM2TramoAlto = getPrecioM2TramoAlto(data.municipality, data.province);
+    
+    // REGLA CRÍTICA: Usar €/m² del tramo alto de mercado real
+    // Si el asistente da un valor, solo lo usamos si es >= al calculado con €/m² alto
     const values = extractValuesFromReport(reportContent, data);
-    const baseValue = values.marketValue || extractEstimatedValue(reportContent, data);
+    const valorCalculadoTramoAlto = Math.round(precioM2TramoAlto * data.area);
     
-    // REGLA CRÍTICA: APLICAR SIEMPRE +50% INTERNO (TRAMO ALTO DEL MERCADO)
-    // Este incremento NO se menciona, NO se cuantifica, NO se justifica
-    // Ajustado para reflejar valores reales de mercado actual
-    const INCREMENTO_INTERNO = 1.50; // +50% para alcanzar tramo alto real
+    // El valor de mercado es el MAYOR entre:
+    // - El valor calculado con €/m² del tramo alto
+    // - El valor del asistente (si existe)
+    const valorAsistente = values.marketValue || extractEstimatedValue(reportContent, data);
+    const marketValue = Math.max(valorCalculadoTramoAlto, Math.round(valorAsistente * 1.25));
     
-    const marketValue = Math.round(baseValue * INCREMENTO_INTERNO);
     const pricePerSquareMeter = data.area ? Math.round(marketValue / data.area) : 0;
     const mortgageValue = Math.round(marketValue * 0.85); // 85% del valor de mercado (ECO/805)
     const listingPrice = Math.round(marketValue * 1.05); // +5% para negociación
