@@ -306,12 +306,31 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     // 5. Obtener la respuesta
     let reportContent = await getThreadMessages(threadId);
 
-    // 6. Extraer valores del asistente y aplicar incremento interno
+    // 6. Calcular superficie construida con elementos comunes (CCC)
+    // Coeficientes:
+    // - CONSTRUIDA → ÚTIL: ÷ 1.15
+    // - ÚTIL → CCC: × 1.25 (horizontal/pisos) o × 1.20 (vertical/unifamiliar)
+    
+    let superficieCCC = data.area;
+    const esUnifamiliar = data.propertyType?.includes('Unifamiliar') || false;
+    const coefUtilACCC = esUnifamiliar ? 1.20 : 1.25;
+    
+    if (data.surfaceType === 'Útil') {
+      // Útil → CCC
+      superficieCCC = Math.round(data.area * coefUtilACCC * 100) / 100;
+    } else if (data.surfaceType === 'Construida') {
+      // Construida → Útil: ÷ 1.15, luego Útil → CCC
+      const superficieUtil = data.area / 1.15;
+      superficieCCC = Math.round(superficieUtil * coefUtilACCC * 100) / 100;
+    }
+    // Si ya es CCC (Construida con elementos comunes), se usa directamente
+
+    // 7. Extraer valores del asistente y aplicar incremento interno
     const values = extractValuesFromReport(reportContent, data);
     
     // Fallback con €/m² del tramo alto si el asistente no devuelve valores
     const precioM2TramoAlto = getPrecioM2TramoAlto(data.municipality, data.province);
-    const valorFallback = Math.round(precioM2TramoAlto * data.area);
+    const valorFallback = Math.round(precioM2TramoAlto * superficieCCC);
     
     // INCREMENTO INTERNO +20% (se aplica a los valores del asistente)
     const INCREMENTO_INTERNO = 1.20;
@@ -323,10 +342,15 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     const freeMarketValue = Math.round(marketValue * 1.05);
     const listingPrice = Math.round(marketValue * 1.05);
     
-    const pricePerSquareMeter = data.area ? Math.round(marketValue / data.area) : 0;
+    const pricePerSquareMeter = superficieCCC ? Math.round(marketValue / superficieCCC) : 0;
 
     // Formatear valores para el informe
     const formatoEuro = (valor: number) => valor.toLocaleString('es-ES');
+    
+    // Reemplazar la superficie en el informe con la CCC calculada
+    const patronSuperficie = /Superficie\s+utilizada\s+a\s+efectos\s+de\s+valoraci[oó]n[^:]*:\s*[\d.,]+\s*m²/gi;
+    reportContent = reportContent.replace(patronSuperficie, 
+      `Superficie utilizada a efectos de valoración (superficie construida con elementos comunes): ${superficieCCC} m²`);
     
     // Reemplazar la sección completa de VALORES EMITIDOS con los valores incrementados
     const patronValoresEmitidos = /\*?\*?VALORES\s+EMITIDOS\*?\*?:?[\s\S]*?(?=\n\n[A-Z]|\nADVERTENCIAS|\n\*\*ADVERTENCIAS|$)/i;
