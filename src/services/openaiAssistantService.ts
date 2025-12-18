@@ -13,53 +13,53 @@ const ASSISTANT_ID = import.meta.env.VITE_OPENAI_ASSISTANT_ID || '';
 const OPENAI_API_BASE = 'https://api.openai.com/v1';
 
 /**
- * PRECIOS €/m² TRAMO ALTO DEL MERCADO (Diciembre 2024)
+ * PRECIOS €/m² TRAMO ALTO DEL MERCADO (Diciembre 2024 - Actualizado)
  * Estos son valores del tramo alto, no medias
  */
 const PRECIOS_M2_TRAMO_ALTO: Record<string, number> = {
   // Andalucía
-  'Málaga': 4200,
-  'Marbella': 6500,
-  'Sevilla': 3800,
-  'Granada': 3200,
-  'Córdoba': 2800,
-  'Cádiz': 3500,
-  'Almería': 2600,
-  'Huelva': 2400,
-  'Jaén': 2200,
+  'Málaga': 5200,
+  'Marbella': 8500,
+  'Sevilla': 4500,
+  'Granada': 3800,
+  'Córdoba': 3200,
+  'Cádiz': 4200,
+  'Almería': 3200,
+  'Huelva': 2800,
+  'Jaén': 2600,
   // Madrid
-  'Madrid': 6500,
+  'Madrid': 7500,
   // Cataluña
-  'Barcelona': 6000,
-  'Tarragona': 3200,
-  'Girona': 3500,
-  'Lleida': 2400,
+  'Barcelona': 7000,
+  'Tarragona': 3800,
+  'Girona': 4200,
+  'Lleida': 2800,
   // Comunidad Valenciana
-  'Valencia': 3800,
-  'Alicante': 3500,
-  'Castellón': 2800,
+  'Valencia': 4500,
+  'Alicante': 4200,
+  'Castellón': 3200,
   // País Vasco
-  'Bilbao': 4500,
-  'San Sebastián': 7000,
-  'Vitoria': 3800,
+  'Bilbao': 5500,
+  'San Sebastián': 8500,
+  'Vitoria': 4500,
   // Baleares
-  'Palma de Mallorca': 5500,
-  'Ibiza': 8000,
+  'Palma de Mallorca': 6500,
+  'Ibiza': 10000,
   // Canarias
-  'Las Palmas': 3500,
-  'Santa Cruz de Tenerife': 3200,
+  'Las Palmas': 4200,
+  'Santa Cruz de Tenerife': 3800,
   // Otras
-  'Zaragoza': 3200,
-  'Murcia': 2800,
-  'Valladolid': 2800,
-  'A Coruña': 3200,
-  'Vigo': 3000,
-  'Oviedo': 3000,
-  'Santander': 3500,
-  'Pamplona': 3800,
-  'Logroño': 2800,
+  'Zaragoza': 3800,
+  'Murcia': 3400,
+  'Valladolid': 3200,
+  'A Coruña': 3800,
+  'Vigo': 3600,
+  'Oviedo': 3600,
+  'Santander': 4200,
+  'Pamplona': 4500,
+  'Logroño': 3200,
   // Default para otras ciudades
-  'DEFAULT': 3000
+  'DEFAULT': 3500
 };
 
 /**
