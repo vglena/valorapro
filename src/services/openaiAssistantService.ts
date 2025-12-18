@@ -306,54 +306,33 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     // 5. Obtener la respuesta
     let reportContent = await getThreadMessages(threadId);
 
-    // 6. Extraer valores del informe y aplicar incremento del tramo alto
+    // 6. Extraer valores del asistente y aplicar incremento interno
     const values = extractValuesFromReport(reportContent, data);
-    const precioM2TramoAlto = getPrecioM2TramoAlto(data.municipality, data.province);
-    const valorMinimoTramoAlto = Math.round(precioM2TramoAlto * data.area);
     
-    // Calcular valores con incremento interno (+25% sobre lo que da el asistente, o usar €/m² alto)
+    // INCREMENTO INTERNO +25% (se aplica a los valores del asistente)
     const INCREMENTO_INTERNO = 1.25;
-    const baseMarket = values.marketValue || valorMinimoTramoAlto;
-    const marketValue = Math.max(Math.round(baseMarket * INCREMENTO_INTERNO), valorMinimoTramoAlto);
+    
+    // Calcular valores con incremento
+    const marketValue = values.marketValue ? Math.round(values.marketValue * INCREMENTO_INTERNO) : 0;
     const mortgageValue = Math.round(marketValue * 0.85);
-    const listingPrice = Math.round(marketValue * 1.05);
     const freeMarketValue = Math.round(marketValue * 1.05);
+    const listingPrice = Math.round(marketValue * 1.05);
     
     const pricePerSquareMeter = data.area ? Math.round(marketValue / data.area) : 0;
 
-    // IMPORTANTE: Reemplazar los valores en el informe para que coincidan
+    // Formatear valores para el informe
     const formatoEuro = (valor: number) => valor.toLocaleString('es-ES');
     
-    // Función para crear patrón que capture diferentes formatos de número
-    const crearPatronNumero = (valor: number): RegExp => {
-      const str = valor.toString();
-      // Patrón que captura: 360000, 360.000, 360,000
-      return new RegExp(`${str}|${valor.toLocaleString('es-ES')}|${valor.toLocaleString('en-US')}`, 'g');
-    };
+    // Reemplazar la sección completa de VALORES EMITIDOS con los valores incrementados
+    const patronValoresEmitidos = /VALORES\s+EMITIDOS:[\s\S]*?(?=\n\n[A-Z]|\nADVERTENCIAS|$)/i;
+    const nuevosValoresEmitidos = `VALORES EMITIDOS:
+
+1. VALOR DE MERCADO (ECO/ECM): ${formatoEuro(marketValue)} €
+2. VALOR DE GARANTÍA HIPOTECARIA: ${formatoEuro(mortgageValue)} €
+3. VALOR DE MERCADO LIBRE (no OM): ${formatoEuro(freeMarketValue)} €
+4. VALOR DE VENTA RECOMENDADO: ${formatoEuro(listingPrice)} €`;
     
-    // Reemplazar VALOR DE MERCADO
-    if (values.marketValue && values.marketValue !== marketValue) {
-      const patronMercado = crearPatronNumero(values.marketValue);
-      reportContent = reportContent.replace(patronMercado, formatoEuro(marketValue));
-    }
-    
-    // Reemplazar VALOR HIPOTECARIO
-    if (values.mortgageValue && values.mortgageValue !== mortgageValue) {
-      const patronHipoteca = crearPatronNumero(values.mortgageValue);
-      reportContent = reportContent.replace(patronHipoteca, formatoEuro(mortgageValue));
-    }
-    
-    // Reemplazar VALOR DE VENTA
-    if (values.listingPrice && values.listingPrice !== listingPrice) {
-      const patronVenta = crearPatronNumero(values.listingPrice);
-      reportContent = reportContent.replace(patronVenta, formatoEuro(listingPrice));
-    }
-    
-    // Reemplazar VALOR LIBRE
-    if (values.freeMarketValue && values.freeMarketValue !== freeMarketValue) {
-      const patronLibre = crearPatronNumero(values.freeMarketValue);
-      reportContent = reportContent.replace(patronLibre, formatoEuro(freeMarketValue));
-    }
+    reportContent = reportContent.replace(patronValoresEmitidos, nuevosValoresEmitidos);
 
     // Extraer siguientes pasos del informe
     const nextSteps = extractNextSteps(reportContent);
