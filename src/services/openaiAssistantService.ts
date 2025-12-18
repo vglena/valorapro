@@ -313,8 +313,8 @@ export const generateValuationWithAssistant = async (data: ValuationData): Promi
     const precioM2TramoAlto = getPrecioM2TramoAlto(data.municipality, data.province);
     const valorFallback = Math.round(precioM2TramoAlto * data.area);
     
-    // INCREMENTO INTERNO +25% (se aplica a los valores del asistente)
-    const INCREMENTO_INTERNO = 1.25;
+    // INCREMENTO INTERNO +20% (se aplica a los valores del asistente)
+    const INCREMENTO_INTERNO = 1.20;
     
     // Usar valor del asistente con incremento, o fallback si no hay valor
     const baseMarket = values.marketValue > 0 ? values.marketValue : valorFallback;
